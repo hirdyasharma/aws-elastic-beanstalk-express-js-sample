@@ -1,62 +1,47 @@
 pipeline {
     agent {
         docker {
-            image 'node:16'  // Use Node 16 Docker image as the build agent
-            args '-u root'   // Run as root user to avoid permission issues
+            image 'node:16' // Use Node 16 Docker image as the build agent
+            args '-u root' // Run as root for permissions if needed
         }
     }
     environment {
-        SNYK_TOKEN = credentials('snyk-token') // Add your Snyk token from Jenkins credentials
+        SNYK_TOKEN = credentials('snyk-token') // Retrieve the Snyk token from Jenkins credentials
     }
     stages {
-        stage('Checkout') {
-            steps {
-                script {
-                    // Checkout code from GitHub
-                    checkout scm
-                }
-            }
-        }
         stage('Install Dependencies') {
             steps {
                 script {
-                    // Install project dependencies
-                    sh 'npm install'
+                    // Run npm install to install dependencies
+                    sh 'npm install --save'
                 }
             }
         }
         stage('Snyk Security Scan') {
             steps {
                 script {
-                    // Run Snyk to check for vulnerabilities
-                    sh 'snyk test --all-projects --severity-threshold=critical'
+                    // Run Snyk to test for vulnerabilities
+                    sh 'npx snyk test --all-projects'
                 }
             }
         }
         stage('Build') {
             steps {
                 script {
-                    // You can add your build steps here (if any)
-                    echo 'Build step can be added here'
+                    // You can add additional build steps here if needed
+                    sh 'npm run build'
                 }
             }
         }
     }
     post {
-        always {
-            script {
-                // Archive logs regardless of success or failure
-                echo 'Archiving logs...'
-                archiveArtifacts artifacts: '**/logs/*', allowEmptyArchive: true
-            }
-        }
         failure {
-            // If the build fails, notify
-            echo 'Build failed!'
+            // Send notification or handle failure scenario
+            echo 'Pipeline failed due to critical vulnerabilities or build issues.'
         }
         success {
-            // If successful, notify
-            echo 'Build completed successfully!'
+            // Actions to take on success, like notifications or further deployments
+            echo 'Pipeline completed successfully!'
         }
     }
 }
