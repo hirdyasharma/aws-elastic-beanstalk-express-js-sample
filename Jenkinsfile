@@ -11,34 +11,48 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // Checkout code from GitHub
-                git branch: 'main', url: 'https://github.com/hirdyasharma/aws-elastic-beanstalk-express-js-sample'
+                script {
+                    // Checkout code from GitHub
+                    checkout scm
+                }
             }
         }
         stage('Install Dependencies') {
             steps {
-                // Install project dependencies
-                sh 'npm install'
+                script {
+                    // Install project dependencies
+                    sh 'npm install'
+                }
             }
         }
         stage('Snyk Security Scan') {
             steps {
-                // Run Snyk to check for vulnerabilities
-                sh 'snyk test --all-projects --severity-threshold=critical'
+                script {
+                    // Run Snyk to check for vulnerabilities
+                    sh 'snyk test --all-projects --severity-threshold=critical'
+                }
             }
         }
         stage('Build') {
             steps {
-                // You can add your build steps here (if any)
-                echo 'Build step can be added here'
+                script {
+                    // You can add your build steps here (if any)
+                    echo 'Build step can be added here'
+                }
             }
         }
     }
     post {
+        always {
+            script {
+                // Archive logs regardless of success or failure
+                echo 'Archiving logs...'
+                archiveArtifacts artifacts: '**/logs/*', allowEmptyArchive: true
+            }
+        }
         failure {
-            // If the build fails, archive the logs
-            echo 'Build failed, archiving logs...'
-            archiveArtifacts artifacts: '**/logs/*', allowEmptyArchive: true
+            // If the build fails, notify
+            echo 'Build failed!'
         }
         success {
             // If successful, notify
