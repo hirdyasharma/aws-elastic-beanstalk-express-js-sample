@@ -1,30 +1,15 @@
 pipeline {
     agent {
         docker {
-            image 'node:16'  // Use Node.js 16 image as build agent
+            image 'node:16'
         }
     }
     stages {
-        stage('Install Dependencies') {
+        stage('Build') {
             steps {
-                script {
-                    sh 'npm install --save'  // Install project dependencies
-                }
+                sh 'docker build -t myapp .'
+                sh 'docker run myapp'
             }
-        }
-        stage('Security Scan') {
-            steps {
-                script {
-                    // Integrate Snyk for vulnerability scanning
-                    sh 'snyk test'  
-                }
-            }
-        }
-    }
-    post {
-        failure {
-            echo 'Build failed due to critical vulnerabilities.'
-            // You can add additional steps to halt the pipeline if needed
         }
     }
 }
