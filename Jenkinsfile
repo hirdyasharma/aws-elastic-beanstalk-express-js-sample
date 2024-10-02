@@ -2,11 +2,11 @@ pipeline {
     agent {
         docker {
             image 'node:16'
-            args '-u root:root' // Ensure you have permission to install packages
+            args '-u root' // Use root to avoid permission issues
         }
     }
     environment {
-        SNYK_TOKEN = credentials('snyk-token') // Replace with your Snyk token ID in Jenkins
+        SNYK_TOKEN = credentials('snyk-token') // Ensure this matches your credentials ID in Jenkins
     }
     stages {
         stage('Checkout SCM') {
@@ -22,9 +22,10 @@ pipeline {
         stage('Run Tests') {
             steps {
                 script {
-                    // Add a test script if not already present
-                    if (sh(script: "grep -q 'test' package.json", returnStatus: true) != 0) {
-                        sh "npm set-script test 'echo \"No test specified\"'"
+                    // Check if a test script is defined
+                    if (sh(script: 'grep -q test package.json', returnStatus: true) != 0) {
+                        // If no test defined, set a dummy test script
+                        sh 'npm pkg set scripts.test="echo No test specified"'
                     }
                 }
                 sh 'npm test'
@@ -32,18 +33,22 @@ pipeline {
         }
         stage('Snyk Security Scan') {
             steps {
-                sh 'npm install -g snyk'
-                sh "snyk auth ${SNYK_TOKEN}" // Authenticate using the Snyk token
-                sh 'snyk test' // Run the Snyk security scan
+                sh 'npm install -g snyk' // Install Snyk globally
+                // Authenticate with Snyk using the token
+                sh 'echo $SNYK_TOKEN | snyk auth'
+                // Run Snyk test while ignoring specific vulnerabilities
+                sh 'snyk test --all-projects --ignore-policy'
             }
         }
     }
     post {
-        success {
-            echo 'Pipeline completed successfully!'
-        }
         failure {
             echo 'Pipeline failed!'
+            // Optional: Send a notification or take action on failure
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+            // Optional: Take action on success
         }
     }
 }
