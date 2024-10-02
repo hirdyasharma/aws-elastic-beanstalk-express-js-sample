@@ -2,68 +2,48 @@ pipeline {
     agent {
         docker {
             image 'node:16'
-            args '-u root --volume $WORKSPACE:/workspace --workdir /workspace'  // Map Jenkins workspace to Docker and set it as working directory
+            args '-u root:root' // Ensure you have permission to install packages
         }
     }
-    
     environment {
-        SNYK_TOKEN = credentials('snyk-token')  // Use Snyk token from Jenkins credentials
+        SNYK_TOKEN = credentials('snyk-token') // Replace with your Snyk token ID in Jenkins
     }
-    
     stages {
-        stage('Install Git') {
+        stage('Checkout SCM') {
             steps {
-                script {
-                    sh 'apt-get update && apt-get install -y git'
-                }
+                checkout scm
             }
         }
-        
         stage('Install Dependencies') {
             steps {
-                script {
-                    sh 'npm install --save'
-                }
+                sh 'npm install --save'
             }
         }
-        
-        stage('Add Test Script to package.json') {  // Add a simple test script if missing
-            steps {
-                script {
-                    sh '''
-                    if ! grep -q '"test":' package.json; then
-                      npm set-script test "echo 'No test specified'"
-                    fi
-                    '''
-                }
-            }
-        }
-        
         stage('Run Tests') {
             steps {
                 script {
-                    sh 'npm test'
+                    // Add a test script if not already present
+                    if (sh(script: "grep -q 'test' package.json", returnStatus: true) != 0) {
+                        sh "npm set-script test 'echo \"No test specified\"'"
+                    }
                 }
+                sh 'npm test'
             }
         }
-        
         stage('Snyk Security Scan') {
             steps {
-                script {
-                    sh 'npm install -g snyk'
-                    sh 'snyk auth $SNYK_TOKEN'
-                    sh 'snyk test'
-                }
+                sh 'npm install -g snyk'
+                sh "snyk auth ${SNYK_TOKEN}" // Authenticate using the Snyk token
+                sh 'snyk test' // Run the Snyk security scan
             }
         }
     }
-    
     post {
-        failure {
-            echo 'Pipeline failed!'
-        }
         success {
             echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
         }
     }
 }
